@@ -1,6 +1,6 @@
 #pragma once
 
-namespace LiquidCock::Shaders {
+namespace LiquidGlass::Shaders {
 
 inline constexpr const char* LIQUID_GLASS_FRAG = R"GLSL(
 #version 300 es
@@ -151,4 +151,4 @@ void main() {
 }
 )GLSL";
 
-} // namespace LiquidCock::Shaders
+} // namespace LiquidGlass::Shaders

@@ -21,11 +21,11 @@ std::optional<CBox> CGlassPassElement::boundingBox() {
 
     const auto owner = m_data.decoration->owner();
     const auto monitor = g_pHyprOpenGL->m_renderData.pMonitor.lock();
-    auto box = LiquidCock::WindowGeometry::computeWindowBox(owner, monitor);
+    auto box = LiquidGlass::WindowGeometry::computeWindowBox(owner, monitor);
     if (!box || !monitor)
         return std::nullopt;
 
-    box->expand(static_cast<double>(LiquidCock::GlassRenderer::SAMPLE_PADDING_PX) / monitor->m_scale);
+    box->expand(static_cast<double>(LiquidGlass::GlassRenderer::SAMPLE_PADDING_PX) / monitor->m_scale);
     return box;
 }
 

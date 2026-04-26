@@ -12,7 +12,7 @@
 #include "Config.hpp"
 #include "Globals.hpp"
 
-namespace LiquidCock::GlassRenderer {
+namespace LiquidGlass::GlassRenderer {
 
 static void uploadToneUniforms() {
     const auto& uniforms = g_state->shaderManager.glassUniforms;
@@ -167,4 +167,4 @@ void applyGlassEffect(CFramebuffer& sampleFramebuffer, CFramebuffer& targetFrame
     g_pHyprOpenGL->scissor(nullptr);
 }
 
-} // namespace LiquidCock::GlassRenderer
+} // namespace LiquidGlass::GlassRenderer

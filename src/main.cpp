@@ -26,7 +26,7 @@
 #include "GlassPassElement.hpp"
 #include "Globals.hpp"
 
-namespace LiquidCock {
+namespace LiquidGlass {
 
 using RenderPassRenderFn = CRegion (*)(CRenderPass*, const CRegion&);
 using RenderWindowFn = void (*)(CHyprRenderer*, PHLWINDOW, PHLMONITOR, const Time::steady_tp&, bool, eRenderPassMode, bool, bool);
@@ -58,7 +58,7 @@ static CRegion damageWithGlassBoxes(CRenderPass* self, const CRegion& damage, bo
 }
 
 void notifyError(std::string_view message) {
-    const std::string fullMessage = std::string("[liquidcock] ") + std::string(message);
+    const std::string fullMessage = std::string("[liquidglass] ") + std::string(message);
     Log::logger->log(Log::ERR, "{}", fullMessage);
     if (g_pluginHandle)
         HyprlandAPI::addNotification(g_pluginHandle, fullMessage, CHyprColor(0xFFFF3355), 8000);
@@ -70,7 +70,7 @@ static CRegion hookRenderPassRender(CRenderPass* self, const CRegion& damage) {
         for (auto& elementData : self->m_passElements) {
             auto* surface = dynamic_cast<CSurfacePassElement*>(elementData->element.get());
             if (surface && surface->m_data.pWindow && !isExcludedWindow(surface->m_data.pWindow)) {
-                // LiquidCock provides its own sampled blur. Leaving Hyprland's
+                // LiquidGlass provides its own sampled blur. Leaving Hyprland's
                 // surface blur enabled can make blur:xray show wallpaper only.
                 surface->m_data.blur = false;
 
@@ -183,7 +183,7 @@ static CFunctionHook* installHook(const std::string& demangledNeedle, const std:
 }
 
 static bool hasDecoration(PHLWINDOW window) {
-    return std::ranges::any_of(window->m_windowDecorations, [](const auto& decoration) { return decoration && decoration->getDisplayName() == "LiquidCock"; });
+    return std::ranges::any_of(window->m_windowDecorations, [](const auto& decoration) { return decoration && decoration->getDisplayName() == "LiquidGlass"; });
 }
 
 static CGlassDecoration* glassDecorationFor(PHLWINDOW window) {
@@ -191,7 +191,7 @@ static CGlassDecoration* glassDecorationFor(PHLWINDOW window) {
         return nullptr;
 
     for (const auto& decoration : window->m_windowDecorations) {
-        if (decoration && decoration->getDisplayName() == "LiquidCock")
+        if (decoration && decoration->getDisplayName() == "LiquidGlass")
             return dynamic_cast<CGlassDecoration*>(decoration.get());
     }
 
@@ -203,7 +203,7 @@ static void removeWindow(PHLWINDOW window) {
         return;
 
     for (const auto& decoration : window->m_windowDecorations) {
-        if (decoration && decoration->getDisplayName() == "LiquidCock") {
+        if (decoration && decoration->getDisplayName() == "LiquidGlass") {
             window->removeWindowDeco(decoration.get());
             break;
         }
@@ -266,10 +266,10 @@ static void addConfigValues() {
     HyprlandAPI::addConfigValue(g_pluginHandle, CFG_ADAPTIVE_BOOST, Hyprlang::FLOAT{DEFAULT_ADAPTIVE_BOOST});
 }
 
-} // namespace LiquidCock
+} // namespace LiquidGlass
 
 APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
-    using namespace LiquidCock;
+    using namespace LiquidGlass;
 
     g_pluginHandle = handle;
 
@@ -301,7 +301,7 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
 }
 
 APICALL EXPORT void PLUGIN_EXIT() {
-    using namespace LiquidCock;
+    using namespace LiquidGlass;
 
     if (!g_state)
         return;

@@ -5,7 +5,7 @@
 #include <hyprland/src/desktop/view/Window.hpp>
 #include <hyprland/src/render/OpenGL.hpp>
 
-namespace LiquidCock::WindowGeometry {
+namespace LiquidGlass::WindowGeometry {
 
 [[nodiscard]] inline std::optional<CBox> computeWindowBox(PHLWINDOW window, PHLMONITOR monitor) {
     if (!window || !monitor)
@@ -22,4 +22,4 @@ namespace LiquidCock::WindowGeometry {
     return box;
 }
 
-} // namespace LiquidCock::WindowGeometry
+} // namespace LiquidGlass::WindowGeometry

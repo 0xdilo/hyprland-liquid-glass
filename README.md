@@ -1,6 +1,6 @@
-# LiquidCock
+# Hyprland Liquid Glass
 
-LiquidCock is a Hyprland plugin that renders a per-window liquid glass material. It samples the framebuffer behind each window, applies a small Gaussian frost blur, then adds refraction, chromatic separation, lens distortion, and a restrained edge highlight.
+LiquidGlass is a Hyprland plugin that renders a per-window liquid glass material. It samples the framebuffer behind each window, applies a small Gaussian frost blur, then adds refraction, chromatic separation, lens distortion, and a restrained edge highlight.
 
 The effect is rendered as a window decoration under the client surface. The plugin also lowers managed window alpha slightly so normal opaque apps can show the material without requiring app-specific transparency.
 
@@ -17,8 +17,8 @@ Hyprland plugins are ABI-sensitive. Rebuild this plugin whenever Hyprland update
 ## Install With Hyprpm
 
 ```bash
-hyprpm add https://github.com/0xdilo/liquidcock
-hyprpm enable liquidcock
+hyprpm add https://github.com/0xdilo/hyprland-liquid-glass
+hyprpm enable liquidglass
 hyprpm reload
 ```
 
@@ -26,21 +26,21 @@ hyprpm reload
 
 ```bash
 make
-hyprctl plugin load "$PWD/liquidcock.so"
+hyprctl plugin load "$PWD/liquidglass.so"
 ```
 
 For a persistent manual load, add the built plugin path to `hyprland.conf`:
 
 ```ini
-plugin = /absolute/path/to/liquidcock.so
+plugin = /absolute/path/to/liquidglass.so
 ```
 
 ## Config
 
-All options live under `plugin:liquidcock:` in `hyprland.conf`.
+All options live under `plugin:liquidglass:` in `hyprland.conf`.
 
 ```ini
-plugin:liquidcock {
+plugin:liquidglass {
     enabled = 1
 
     # Optional. No applications are excluded by default.
@@ -99,7 +99,7 @@ plugin:liquidcock {
 
 ## Performance Notes
 
-LiquidCock renders only around windows that use the material. It samples a padded region behind each affected window, blurs that sample in an offscreen framebuffer, and composites the final glass pass back into the current render pass.
+LiquidGlass renders only around windows that use the material. It samples a padded region behind each affected window, blurs that sample in an offscreen framebuffer, and composites the final glass pass back into the current render pass.
 
 For lower GPU cost, reduce `blur_iterations`, `blur_strength`, or `glass_opacity`. For a subtler effect on opaque apps, increase `window_opacity`.
 
@@ -108,8 +108,8 @@ For lower GPU cost, reduce `blur_iterations`, `blur_strength`, or `glass_opacity
 ```bash
 make clean
 make
-hyprctl plugin unload "$PWD/liquidcock.so"
-hyprctl plugin load "$PWD/liquidcock.so"
+hyprctl plugin unload "$PWD/liquidglass.so"
+hyprctl plugin load "$PWD/liquidglass.so"
 ```
 
 Check Hyprland config errors after changing options:

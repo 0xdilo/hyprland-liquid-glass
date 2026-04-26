@@ -7,7 +7,7 @@
 #include "Globals.hpp"
 #include "Shaders.hpp"
 
-namespace LiquidCock {
+namespace LiquidGlass {
 
 bool CShaderManager::compileGlassShader() {
     if (!glassShader->createProgram(g_pHyprOpenGL->m_shaders->TEXVERTSRC, Shaders::LIQUID_GLASS_FRAG, true, true)) {
@@ -68,4 +68,4 @@ void CShaderManager::destroy() noexcept {
     m_initialized = false;
 }
 
-} // namespace LiquidCock
+} // namespace LiquidGlass

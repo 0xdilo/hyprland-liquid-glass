@@ -7,34 +7,34 @@
 
 #include <hyprland/src/plugins/PluginAPI.hpp>
 
-namespace LiquidCock {
+namespace LiquidGlass {
 
 inline HANDLE g_pluginHandle = nullptr;
 
-inline constexpr const char* PLUGIN_NAME = "liquidcock";
+inline constexpr const char* PLUGIN_NAME = "liquidglass";
 inline constexpr const char* PLUGIN_DESCRIPTION = "Liquid Glass inspired per-window shader decoration";
 inline constexpr const char* PLUGIN_AUTHOR = "lain";
 inline constexpr const char* PLUGIN_VERSION = "0.1.0";
 
-inline constexpr const char* CFG_ENABLED = "plugin:liquidcock:enabled";
-inline constexpr const char* CFG_EXCLUDE_CLASSES = "plugin:liquidcock:exclude_classes";
-inline constexpr const char* CFG_WINDOW_OPACITY = "plugin:liquidcock:window_opacity";
-inline constexpr const char* CFG_BLUR_STRENGTH = "plugin:liquidcock:blur_strength";
-inline constexpr const char* CFG_BLUR_ITERATIONS = "plugin:liquidcock:blur_iterations";
-inline constexpr const char* CFG_REFRACTION_STRENGTH = "plugin:liquidcock:refraction_strength";
-inline constexpr const char* CFG_CHROMATIC_ABERRATION = "plugin:liquidcock:chromatic_aberration";
-inline constexpr const char* CFG_FRESNEL_STRENGTH = "plugin:liquidcock:fresnel_strength";
-inline constexpr const char* CFG_SPECULAR_STRENGTH = "plugin:liquidcock:specular_strength";
-inline constexpr const char* CFG_GLASS_OPACITY = "plugin:liquidcock:glass_opacity";
-inline constexpr const char* CFG_EDGE_THICKNESS = "plugin:liquidcock:edge_thickness";
-inline constexpr const char* CFG_TINT_COLOR = "plugin:liquidcock:tint_color";
-inline constexpr const char* CFG_LENS_DISTORTION = "plugin:liquidcock:lens_distortion";
-inline constexpr const char* CFG_BRIGHTNESS = "plugin:liquidcock:brightness";
-inline constexpr const char* CFG_CONTRAST = "plugin:liquidcock:contrast";
-inline constexpr const char* CFG_SATURATION = "plugin:liquidcock:saturation";
-inline constexpr const char* CFG_VIBRANCY = "plugin:liquidcock:vibrancy";
-inline constexpr const char* CFG_ADAPTIVE_DIM = "plugin:liquidcock:adaptive_dim";
-inline constexpr const char* CFG_ADAPTIVE_BOOST = "plugin:liquidcock:adaptive_boost";
+inline constexpr const char* CFG_ENABLED = "plugin:liquidglass:enabled";
+inline constexpr const char* CFG_EXCLUDE_CLASSES = "plugin:liquidglass:exclude_classes";
+inline constexpr const char* CFG_WINDOW_OPACITY = "plugin:liquidglass:window_opacity";
+inline constexpr const char* CFG_BLUR_STRENGTH = "plugin:liquidglass:blur_strength";
+inline constexpr const char* CFG_BLUR_ITERATIONS = "plugin:liquidglass:blur_iterations";
+inline constexpr const char* CFG_REFRACTION_STRENGTH = "plugin:liquidglass:refraction_strength";
+inline constexpr const char* CFG_CHROMATIC_ABERRATION = "plugin:liquidglass:chromatic_aberration";
+inline constexpr const char* CFG_FRESNEL_STRENGTH = "plugin:liquidglass:fresnel_strength";
+inline constexpr const char* CFG_SPECULAR_STRENGTH = "plugin:liquidglass:specular_strength";
+inline constexpr const char* CFG_GLASS_OPACITY = "plugin:liquidglass:glass_opacity";
+inline constexpr const char* CFG_EDGE_THICKNESS = "plugin:liquidglass:edge_thickness";
+inline constexpr const char* CFG_TINT_COLOR = "plugin:liquidglass:tint_color";
+inline constexpr const char* CFG_LENS_DISTORTION = "plugin:liquidglass:lens_distortion";
+inline constexpr const char* CFG_BRIGHTNESS = "plugin:liquidglass:brightness";
+inline constexpr const char* CFG_CONTRAST = "plugin:liquidglass:contrast";
+inline constexpr const char* CFG_SATURATION = "plugin:liquidglass:saturation";
+inline constexpr const char* CFG_VIBRANCY = "plugin:liquidglass:vibrancy";
+inline constexpr const char* CFG_ADAPTIVE_DIM = "plugin:liquidglass:adaptive_dim";
+inline constexpr const char* CFG_ADAPTIVE_BOOST = "plugin:liquidglass:adaptive_boost";
 
 inline constexpr const char* DEFAULT_EXCLUDE_CLASSES = "";
 inline constexpr float DEFAULT_WINDOW_OPACITY = 0.94f;
@@ -88,4 +88,4 @@ inline float windowOpacity() {
     return std::clamp(configFloat(CFG_WINDOW_OPACITY, DEFAULT_WINDOW_OPACITY), 0.05f, 1.0f);
 }
 
-} // namespace LiquidCock
+} // namespace LiquidGlass

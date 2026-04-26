@@ -12,7 +12,7 @@
 
 class CGlassDecoration;
 
-namespace LiquidCock {
+namespace LiquidGlass {
 
 struct SGlobalState {
     CShaderManager shaderManager;
@@ -28,4 +28,4 @@ inline UP<SGlobalState> g_state;
 
 void notifyError(std::string_view message);
 
-} // namespace LiquidCock
+} // namespace LiquidGlass

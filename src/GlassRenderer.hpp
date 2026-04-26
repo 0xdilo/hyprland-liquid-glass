@@ -3,7 +3,7 @@
 #include <hyprland/src/helpers/math/Math.hpp>
 #include <hyprland/src/render/Framebuffer.hpp>
 
-namespace LiquidCock::GlassRenderer {
+namespace LiquidGlass::GlassRenderer {
 
 inline constexpr int SAMPLE_PADDING_PX = 96;
 inline constexpr float BLUR_DOWNSCALE_THRESHOLD = 0.35f;
@@ -14,4 +14,4 @@ void blurBackground(CFramebuffer& sampleFramebuffer, float radius, int iteration
 void applyGlassEffect(CFramebuffer& sampleFramebuffer, CFramebuffer& targetFramebuffer, CBox& rawBox, CBox& transformedBox, float alpha, float cornerRadius,
                       float roundingPower, const Vector2D& paddingRatio);
 
-} // namespace LiquidCock::GlassRenderer
+} // namespace LiquidGlass::GlassRenderer

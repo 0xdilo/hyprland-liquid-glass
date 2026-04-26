@@ -1,9 +1,9 @@
-# LiquidCock Hyprland plugin
+# LiquidGlass Hyprland plugin
 
 CXX ?= g++
 PKG_CONFIG ?= pkg-config
 
-TARGET := liquidcock.so
+TARGET := liquidglass.so
 BUILD_DIR ?= build
 PLUGIN_DIR ?= $(HOME)/.local/share/hyprland/plugins
 

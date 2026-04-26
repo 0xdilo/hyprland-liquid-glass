@@ -4,7 +4,7 @@
 
 #include <hyprland/src/render/Shader.hpp>
 
-namespace LiquidCock {
+namespace LiquidGlass {
 
 struct SGlassUniforms {
     GLint refractionStrength = -1;
@@ -49,4 +49,4 @@ class CShaderManager {
     [[nodiscard]] bool compileBlurShader();
 };
 
-} // namespace LiquidCock
+} // namespace LiquidGlass

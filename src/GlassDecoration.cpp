@@ -25,7 +25,7 @@ SDecorationPositioningInfo CGlassDecoration::getPositioningInfo() {
 void CGlassDecoration::onPositioningReply(const SDecorationPositioningReply&) {}
 
 void CGlassDecoration::draw(PHLMONITOR monitor, float const& alpha) {
-    if (!LiquidCock::g_state || !LiquidCock::enabled())
+    if (!LiquidGlass::g_state || !LiquidGlass::enabled())
         return;
 
     if (alpha <= 0.001F)
@@ -56,13 +56,13 @@ PHLWINDOW CGlassDecoration::owner() {
 }
 
 void CGlassDecoration::renderPass(PHLMONITOR monitor, float alpha) {
-    if (!LiquidCock::g_state || !LiquidCock::enabled())
+    if (!LiquidGlass::g_state || !LiquidGlass::enabled())
         return;
 
     if (alpha <= 0.001F)
         return;
 
-    auto& shaderManager = LiquidCock::g_state->shaderManager;
+    auto& shaderManager = LiquidGlass::g_state->shaderManager;
     shaderManager.initializeIfNeeded();
     if (!shaderManager.initialized())
         return;
@@ -71,7 +71,7 @@ void CGlassDecoration::renderPass(PHLMONITOR monitor, float alpha) {
     if (!window || !monitor || !g_pHyprOpenGL->m_renderData.currentFB)
         return;
 
-    auto box = LiquidCock::WindowGeometry::computeWindowBox(window, monitor);
+    auto box = LiquidGlass::WindowGeometry::computeWindowBox(window, monitor);
     if (!box)
         return;
 
@@ -82,23 +82,23 @@ void CGlassDecoration::renderPass(PHLMONITOR monitor, float alpha) {
     if (transformedBox.width <= 1.0 || transformedBox.height <= 1.0)
         return;
 
-    const auto blurStrength = std::clamp(LiquidCock::configFloat(LiquidCock::CFG_BLUR_STRENGTH, LiquidCock::DEFAULT_BLUR_STRENGTH), 0.0F, 4.0F);
-    const int downscale = blurStrength >= LiquidCock::GlassRenderer::BLUR_DOWNSCALE_THRESHOLD ? LiquidCock::GlassRenderer::BLUR_DOWNSCALE_MAX : 1;
+    const auto blurStrength = std::clamp(LiquidGlass::configFloat(LiquidGlass::CFG_BLUR_STRENGTH, LiquidGlass::DEFAULT_BLUR_STRENGTH), 0.0F, 4.0F);
+    const int downscale = blurStrength >= LiquidGlass::GlassRenderer::BLUR_DOWNSCALE_THRESHOLD ? LiquidGlass::GlassRenderer::BLUR_DOWNSCALE_MAX : 1;
 
     auto* source = g_pHyprOpenGL->m_renderData.currentFB;
-    LiquidCock::GlassRenderer::sampleBackground(m_sampleFramebuffer, *source, transformedBox, m_samplePaddingRatio, downscale);
+    LiquidGlass::GlassRenderer::sampleBackground(m_sampleFramebuffer, *source, transformedBox, m_samplePaddingRatio, downscale);
 
     const float blurRadius = blurStrength * 12.0F / static_cast<float>(downscale);
-    const int blurIterations = std::clamp(static_cast<int>(LiquidCock::configInt(LiquidCock::CFG_BLUR_ITERATIONS, LiquidCock::DEFAULT_BLUR_ITERATIONS)), 1, 5);
+    const int blurIterations = std::clamp(static_cast<int>(LiquidGlass::configInt(LiquidGlass::CFG_BLUR_ITERATIONS, LiquidGlass::DEFAULT_BLUR_ITERATIONS)), 1, 5);
     const int viewportWidth = static_cast<int>(g_pHyprOpenGL->m_renderData.pMonitor->m_transformedSize.x);
     const int viewportHeight = static_cast<int>(g_pHyprOpenGL->m_renderData.pMonitor->m_transformedSize.y);
-    LiquidCock::GlassRenderer::blurBackground(m_sampleFramebuffer, blurRadius, blurIterations, source->getFBID(), viewportWidth, viewportHeight);
+    LiquidGlass::GlassRenderer::blurBackground(m_sampleFramebuffer, blurRadius, blurIterations, source->getFBID(), viewportWidth, viewportHeight);
 
     const float monitorScale = monitor->m_scale;
     const float cornerRadius = window->rounding() * monitorScale;
     const float roundingPower = window->roundingPower();
 
-    LiquidCock::GlassRenderer::applyGlassEffect(m_sampleFramebuffer, *source, windowBox, transformedBox, alpha, cornerRadius, roundingPower,
+    LiquidGlass::GlassRenderer::applyGlassEffect(m_sampleFramebuffer, *source, windowBox, transformedBox, alpha, cornerRadius, roundingPower,
                                                 m_samplePaddingRatio);
 }
 
@@ -123,7 +123,7 @@ void CGlassDecoration::damageEntire() {
 
     const auto monitor = window->m_monitor.lock();
     const float scale = monitor ? monitor->m_scale : 1.0F;
-    box.expand(static_cast<double>(LiquidCock::GlassRenderer::SAMPLE_PADDING_PX) / scale);
+    box.expand(static_cast<double>(LiquidGlass::GlassRenderer::SAMPLE_PADDING_PX) / scale);
     g_pHyprRenderer->damageBox(box);
 }
 
@@ -136,5 +136,5 @@ uint64_t CGlassDecoration::getDecorationFlags() {
 }
 
 std::string CGlassDecoration::getDisplayName() {
-    return "LiquidCock";
+    return "LiquidGlass";
 }
