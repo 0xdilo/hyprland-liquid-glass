@@ -4,6 +4,8 @@ LiquidGlass is a Hyprland plugin that renders a per-window liquid glass material
 
 The effect is rendered as a window decoration under the client surface. The plugin also lowers managed window alpha slightly so normal opaque apps can show the material without requiring app-specific transparency.
 
+![LiquidGlass preview](assets/preview.png)
+
 ## Requirements
 
 - Hyprland with plugin support
