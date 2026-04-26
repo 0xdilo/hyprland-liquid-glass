@@ -75,6 +75,8 @@ plugin:liquidglass {
 }
 ```
 
+For a stronger, more visible setup, use the checked-in [evident preset](presets/evident.conf). It keeps the stable compositor path and makes the material easier to see by increasing glass opacity, edge thickness, specular highlights, chromatic split, and lens distortion while lowering managed window opacity slightly.
+
 ### Options
 
 | Option | Default | Notes |
