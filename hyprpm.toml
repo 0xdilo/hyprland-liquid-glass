@@ -1,0 +1,9 @@
+[repository]
+name = "liquidcock"
+authors = ["lain"]
+description = "Liquid Glass inspired per-window shader decoration for Hyprland"
+
+[liquidcock]
+description = "Liquid Glass window effect"
+output = "liquidcock.so"
+build = ["make"]
