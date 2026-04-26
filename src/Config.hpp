@@ -37,7 +37,7 @@ inline constexpr const char* CFG_ADAPTIVE_DIM = "plugin:liquidglass:adaptive_dim
 inline constexpr const char* CFG_ADAPTIVE_BOOST = "plugin:liquidglass:adaptive_boost";
 
 inline constexpr const char* DEFAULT_EXCLUDE_CLASSES = "";
-inline constexpr float DEFAULT_WINDOW_OPACITY = 0.94f;
+inline constexpr float DEFAULT_WINDOW_OPACITY = 0.88f;
 inline constexpr float DEFAULT_BLUR_STRENGTH = 0.28f;
 inline constexpr Hyprlang::INT DEFAULT_BLUR_ITERATIONS = 2;
 inline constexpr float DEFAULT_REFRACTION_STRENGTH = 1.50f;

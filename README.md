@@ -47,7 +47,7 @@ plugin:liquidglass {
     # Use this for media players, browsers, or apps that should stay fully opaque.
     exclude_classes = mpv,helium
 
-    window_opacity = 0.94
+    window_opacity = 0.88
     glass_opacity = 0.66
 
     blur_strength = 0.28
@@ -79,7 +79,7 @@ plugin:liquidglass {
 | --- | ---: | --- |
 | `enabled` | `1` | Enables or disables the plugin effect. |
 | `exclude_classes` | empty | Comma-separated window classes to leave untouched. Matching is case-insensitive and checks current and initial class. |
-| `window_opacity` | `0.94` | Alpha applied to managed window surfaces so the glass backing can show through. Set to `1.0` to avoid forcing opacity. |
+| `window_opacity` | `0.88` | Alpha applied to managed window surfaces so the glass backing can show through. Set to `1.0` to avoid forcing opacity. |
 | `glass_opacity` | `0.66` | Strength of the rendered glass backing. |
 | `blur_strength` | `0.28` | Radius multiplier for the sampled background blur. |
 | `blur_iterations` | `2` | Number of horizontal/vertical blur passes. Higher values cost more GPU time. |
