@@ -88,29 +88,36 @@ void main() {
     vec2 glassUv = mix(uvPadding, vec2(1.0) - uvPadding, v_texcoord);
     vec2 texel = 1.0 / size;
 
-    float lens = (1.0 - edge) * lensDistortion * 0.018;
     vec2 centered = v_texcoord - 0.5;
-    vec2 lensOffset = centered * lens;
-    vec2 edgeOffset = -normal * edge * refractionStrength * 0.055;
-    vec2 offset = (edgeOffset + lensOffset) * texel * minDim;
+    float depth = clamp(-dist / max(minDim * 0.45, 1.0), 0.0, 1.0);
+    float bodyLens = smoothstep(0.03, 0.85, depth) * (1.0 - edge * 0.28);
+    float shoulderLens = smoothstep(0.0, 1.0, inside) * (1.0 - smoothstep(0.42, 1.0, inside));
 
-    float dispersion = chromaticAberration * edge * 0.55;
+    vec2 bodyOffset = -centered * bodyLens * lensDistortion * 0.030;
+    vec2 shoulderOffset = -normal * shoulderLens * lensDistortion * 0.020 * texel * minDim;
+    vec2 edgeOffset = -normal * edge * refractionStrength * 0.062 * texel * minDim;
+    vec2 offset = edgeOffset + shoulderOffset + bodyOffset;
+
+    float dispersion = chromaticAberration * (edge * 0.62 + shoulderLens * 0.14);
     vec3 color = sampleGlass(glassUv, offset, dispersion);
     color = adjustColor(color);
     color = mix(color, tintColor, tintAlpha);
 
     float fresnel = pow(edge, 2.6) * fresnelStrength;
     vec3 edgeGlow = mix(color, vec3(0.42, 0.58, 0.78), 0.36);
-    color = mix(color, edgeGlow, clamp(fresnel * 0.28, 0.0, 0.32));
+    color = mix(color, edgeGlow, clamp(fresnel * 0.34, 0.0, 0.38));
 
-    float topLight = smoothstep(1.0, 0.15, v_texcoord.y) * smoothstep(0.0, 0.65, v_texcoord.x);
-    float diagonal = smoothstep(0.9, 0.1, abs(v_texcoord.y - (0.18 + v_texcoord.x * 0.18)));
-    color += specularStrength * diagonal * topLight * edge * 0.22 * vec3(0.68, 0.78, 0.90);
+    float topLight = (1.0 - smoothstep(0.15, 1.0, v_texcoord.y)) * smoothstep(0.0, 0.65, v_texcoord.x);
+    float diagonal = 1.0 - smoothstep(0.1, 0.9, abs(v_texcoord.y - (0.18 + v_texcoord.x * 0.18)));
+    float caustic = smoothstep(0.10, 0.88, bodyLens) * (1.0 - smoothstep(0.82, 1.0, bodyLens));
+    color += specularStrength * diagonal * topLight * (edge * 0.28 + shoulderLens * 0.18 + caustic * 0.08) * vec3(0.62, 0.76, 0.92);
 
-    float innerShadow = smoothstep(0.60, 1.0, v_texcoord.y) * edge * 0.22;
-    color *= 1.0 - innerShadow;
+    float lowerShadow = smoothstep(0.60, 1.0, v_texcoord.y) * (edge * 0.22 + shoulderLens * 0.08);
+    float rimShadow = shoulderLens * fresnelStrength * 0.025;
+    color *= 1.0 - lowerShadow - rimShadow;
 
-    fragColor = vec4(clamp(color, 0.0, 1.0), glassOpacity * shapeAlpha);
+    float materialAlpha = clamp(shoulderLens * 0.08 + edge * 0.38 + caustic * 0.04, 0.0, 0.38);
+    fragColor = vec4(clamp(color, 0.0, 1.0), glassOpacity * shapeAlpha * materialAlpha);
 }
 )GLSL";
 

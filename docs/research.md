@@ -7,7 +7,8 @@
 - The shuding/liquid-glass reference implements a similar lensing idea with an SVG displacement map generated from a rounded-rect SDF. It confirms that strong interior displacement, not only edge blur, is a major part of the perceived effect.
 - Hyprland's built-in `decoration:screen_shader` runs at the end of rendering, so it cannot target a single window by itself.
 - Hyprland's plugin API supports window decorations and render pass elements. This plugin uses a bottom-layer decoration per window so the shader can sample the actual framebuffer behind each window.
-- For future shader work, the safest next step is to add stronger SDF-based body displacement inside the existing window decoration pass. Avoid layer-surface hooks until they have a minimal test harness, because malformed pass injection can crash Hyprland.
+- The shader now applies SDF-based body lensing inside the existing window decoration pass. This keeps the stable compositor path while making the interior of the glass bend the sampled framebuffer, closer to Apple's lensing description and the shuding displacement-map reference.
+- Avoid layer-surface hooks until they have a minimal test harness, because malformed pass injection can crash Hyprland.
 
 Sources:
 
@@ -16,6 +17,7 @@ Sources:
 - https://developer.apple.com/videos/play/wwdc2025/310/
 - https://developer.apple.com/videos/play/wwdc2025/323/
 - https://developer.apple.com/documentation/TechnologyOverviews/adopting-liquid-glass
+- https://developer.apple.com/documentation/SwiftUI/Applying-Liquid-Glass-to-custom-views
 - https://github.com/shuding/liquid-glass
 - https://wiki.hypr.land/Configuring/Variables/
 - https://wiki.hypr.land/Plugins/Development/Getting-Started/

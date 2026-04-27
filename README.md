@@ -1,6 +1,6 @@
 # Hyprland Liquid Glass
 
-LiquidGlass is a Hyprland plugin that renders a per-window liquid glass material. It samples the framebuffer behind each window, applies a small Gaussian frost blur, then adds refraction, chromatic separation, lens distortion, and a restrained edge highlight.
+LiquidGlass is a Hyprland plugin that renders a per-window liquid glass material. It samples the framebuffer behind each window, applies a small Gaussian frost blur, then adds rounded-shape body lensing, refraction, chromatic separation, and a restrained edge highlight.
 
 The effect is rendered as a window decoration under the client surface. The plugin also lowers managed window alpha slightly so normal opaque apps can show the material without requiring app-specific transparency.
 
@@ -75,7 +75,20 @@ plugin:liquidglass {
 }
 ```
 
-For a stronger, more visible setup, use the checked-in [evident preset](presets/evident.conf). It keeps the stable compositor path and makes the material easier to see by increasing glass opacity, edge thickness, specular highlights, chromatic split, and lens distortion while lowering managed window opacity slightly.
+For a stronger, more visible setup, use the checked-in [evident preset](presets/evident.conf). It keeps the stable compositor path and makes the material easier to see with lower blur, thicker refractive edges, stronger specular highlights, chromatic split, and mild managed-window transparency.
+
+## Layer Shell Surfaces
+
+Layer-shell clients such as Quickshell bars, launchers, notifications, and panels are not normal windows, so this plugin cannot attach a window decoration to them. Use Hyprland layer blur with transparent panel backgrounds instead:
+
+```ini
+layerrule = match:namespace quickshell, blur on
+layerrule = match:namespace quickshell, blur_popups on
+layerrule = match:namespace quickshell, ignore_alpha 0.08
+layerrule = match:namespace quickshell, xray 0
+```
+
+Set the panel background alpha low enough for the compositor blur to show through. For example, the current Quickshell setup uses panel alpha around `0.72` for primary surfaces and `0.62` for softer surfaces. Keep `xray` off if you want the blur to sample other windows behind the layer instead of mostly wallpaper.
 
 ### Options
 
