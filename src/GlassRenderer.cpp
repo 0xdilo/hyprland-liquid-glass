@@ -18,12 +18,12 @@ static void uploadToneUniforms() {
     const auto& uniforms = g_state->shaderManager.glassUniforms;
     const auto& shader = g_state->shaderManager.glassShader;
 
-    shader->setUniformFloat(SHADER_BRIGHTNESS, configFloat(CFG_BRIGHTNESS, DEFAULT_BRIGHTNESS));
-    shader->setUniformFloat(SHADER_CONTRAST, configFloat(CFG_CONTRAST, DEFAULT_CONTRAST));
-    shader->setUniformFloat(SHADER_VIBRANCY, configFloat(CFG_VIBRANCY, DEFAULT_VIBRANCY));
-    glUniform1f(uniforms.saturation, configFloat(CFG_SATURATION, DEFAULT_SATURATION));
-    glUniform1f(uniforms.adaptiveDim, configFloat(CFG_ADAPTIVE_DIM, DEFAULT_ADAPTIVE_DIM));
-    glUniform1f(uniforms.adaptiveBoost, configFloat(CFG_ADAPTIVE_BOOST, DEFAULT_ADAPTIVE_BOOST));
+    shader->setUniformFloat(SHADER_BRIGHTNESS, std::clamp(configFloat(CFG_BRIGHTNESS, DEFAULT_BRIGHTNESS), 0.0F, 2.0F));
+    shader->setUniformFloat(SHADER_CONTRAST, std::clamp(configFloat(CFG_CONTRAST, DEFAULT_CONTRAST), 0.0F, 2.5F));
+    shader->setUniformFloat(SHADER_VIBRANCY, std::clamp(configFloat(CFG_VIBRANCY, DEFAULT_VIBRANCY), 0.0F, 1.0F));
+    glUniform1f(uniforms.saturation, std::clamp(configFloat(CFG_SATURATION, DEFAULT_SATURATION), 0.0F, 2.0F));
+    glUniform1f(uniforms.adaptiveDim, std::clamp(configFloat(CFG_ADAPTIVE_DIM, DEFAULT_ADAPTIVE_DIM), 0.0F, 1.0F));
+    glUniform1f(uniforms.adaptiveBoost, std::clamp(configFloat(CFG_ADAPTIVE_BOOST, DEFAULT_ADAPTIVE_BOOST), 0.0F, 1.0F));
 }
 
 void sampleBackground(CFramebuffer& sampleFramebuffer, CFramebuffer& sourceFramebuffer, CBox box, Vector2D& outPaddingRatio, int downscale) {
@@ -125,7 +125,7 @@ void blurBackground(CFramebuffer& sampleFramebuffer, float radius, int iteration
 }
 
 void applyGlassEffect(CFramebuffer& sampleFramebuffer, CFramebuffer& targetFramebuffer, CBox& rawBox, CBox& transformedBox, float alpha, float cornerRadius,
-                      float roundingPower, const Vector2D& paddingRatio) {
+                      float roundingPower, const Vector2D& paddingRatio, SP<CTexture> maskTexture) {
     auto& shaderManager = g_state->shaderManager;
     const auto& uniforms = shaderManager.glassUniforms;
 
@@ -141,6 +141,8 @@ void applyGlassEffect(CFramebuffer& sampleFramebuffer, CFramebuffer& targetFrame
     auto shader = g_pHyprOpenGL->useShader(shaderManager.glassShader);
     shader->setUniformMatrix3fv(SHADER_PROJ, 1, GL_FALSE, glMatrix.getMatrix());
     shader->setUniformInt(SHADER_TEX, 0);
+    glUniform1i(uniforms.maskTexture, 1);
+    glUniform1i(uniforms.useMask, maskTexture ? 1 : 0);
     shader->setUniformFloat2(SHADER_FULL_SIZE, static_cast<float>(transformedBox.width), static_cast<float>(transformedBox.height));
     shader->setUniformFloat(SHADER_RADIUS, cornerRadius);
     shader->setUniformFloat(SHADER_ROUNDING_POWER, roundingPower);
@@ -160,6 +162,12 @@ void applyGlassEffect(CFramebuffer& sampleFramebuffer, CFramebuffer& targetFrame
     glUniform1f(uniforms.tintAlpha, static_cast<float>(tint & 0xFFU) / 255.0F);
 
     uploadToneUniforms();
+
+    if (maskTexture) {
+        glActiveTexture(GL_TEXTURE1);
+        maskTexture->bind();
+        glActiveTexture(GL_TEXTURE0);
+    }
 
     glBindVertexArray(shader->getUniformLocation(SHADER_SHADER_VAO));
     g_pHyprOpenGL->scissor(rawBox);

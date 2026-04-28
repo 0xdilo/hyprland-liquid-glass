@@ -11,6 +11,7 @@ SOURCES := \
 	src/GlassDecoration.cpp \
 	src/GlassPassElement.cpp \
 	src/GlassRenderer.cpp \
+	src/LayerGlassPassElement.cpp \
 	src/ShaderManager.cpp \
 	src/main.cpp
 

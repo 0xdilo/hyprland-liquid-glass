@@ -4,6 +4,7 @@
 #include <string_view>
 #include <vector>
 
+#include <hyprland/src/desktop/DesktopTypes.hpp>
 #include <hyprland/src/helpers/signal/Signal.hpp>
 #include <hyprland/src/render/Framebuffer.hpp>
 #include <hyprland/src/plugins/HookSystem.hpp>
@@ -14,13 +15,21 @@ class CGlassDecoration;
 
 namespace LiquidGlass {
 
+struct SLayerGlassState {
+    PHLLSREF layer;
+    CFramebuffer sampleFramebuffer;
+    Vector2D samplePaddingRatio;
+};
+
 struct SGlobalState {
     CShaderManager shaderManager;
     CFramebuffer blurTempFramebuffer;
     std::vector<WP<CGlassDecoration>> decorations;
+    std::vector<UP<SLayerGlassState>> layerStates;
     std::vector<CHyprSignalListener> listeners;
     CFunctionHook* renderPassHook = nullptr;
     CFunctionHook* renderWindowHook = nullptr;
+    CFunctionHook* renderLayerHook = nullptr;
     CFunctionHook* windowOpaqueHook = nullptr;
 };
 

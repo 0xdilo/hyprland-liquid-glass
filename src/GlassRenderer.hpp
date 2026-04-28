@@ -12,6 +12,6 @@ inline constexpr int BLUR_DOWNSCALE_MAX = 2;
 void sampleBackground(CFramebuffer& sampleFramebuffer, CFramebuffer& sourceFramebuffer, CBox box, Vector2D& outPaddingRatio, int downscale);
 void blurBackground(CFramebuffer& sampleFramebuffer, float radius, int iterations, GLuint callerFramebufferID, int viewportWidth, int viewportHeight);
 void applyGlassEffect(CFramebuffer& sampleFramebuffer, CFramebuffer& targetFramebuffer, CBox& rawBox, CBox& transformedBox, float alpha, float cornerRadius,
-                      float roundingPower, const Vector2D& paddingRatio);
+                      float roundingPower, const Vector2D& paddingRatio, SP<CTexture> maskTexture = nullptr);
 
 } // namespace LiquidGlass::GlassRenderer

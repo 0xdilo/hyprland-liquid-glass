@@ -25,18 +25,25 @@
 #include "GlassDecoration.hpp"
 #include "GlassPassElement.hpp"
 #include "Globals.hpp"
+#include "LayerGlassPassElement.hpp"
 
 namespace LiquidGlass {
 
 using RenderPassRenderFn = CRegion (*)(CRenderPass*, const CRegion&);
 using RenderWindowFn = void (*)(CHyprRenderer*, PHLWINDOW, PHLMONITOR, const Time::steady_tp&, bool, eRenderPassMode, bool, bool);
+using RenderLayerFn = void (*)(CHyprRenderer*, PHLLS, PHLMONITOR, const Time::steady_tp&, bool, bool);
 using WindowOpaqueFn = bool (*)(Desktop::View::CWindow*);
 
 static RenderPassRenderFn g_originalRenderPassRender = nullptr;
 static RenderWindowFn g_originalRenderWindow = nullptr;
+static RenderLayerFn g_originalRenderLayer = nullptr;
 static WindowOpaqueFn g_originalWindowOpaque = nullptr;
 
 static bool isExcludedWindow(PHLWINDOW window);
+static bool isIncludedLayer(PHLLS layer);
+static bool isFullscreenLayerOverlay(PHLLS layer, PHLMONITOR monitor);
+static bool shouldOverrideLayerSurface(CSurfacePassElement* surface);
+static SLayerGlassState* layerStateFor(PHLLS layer);
 static void closeWindow(PHLWINDOW window);
 static CGlassDecoration* glassDecorationFor(PHLWINDOW window);
 
@@ -45,11 +52,12 @@ static CRegion damageWithGlassBoxes(CRenderPass* self, const CRegion& damage, bo
 
     for (const auto& elementData : self->m_passElements) {
         auto* glass = dynamic_cast<CGlassPassElement*>(elementData->element.get());
-        if (!glass)
+        auto* layerGlass = dynamic_cast<CLayerGlassPassElement*>(elementData->element.get());
+        if (!glass && !layerGlass)
             continue;
 
         hasGlass = true;
-        const auto box = glass->boundingBox();
+        const auto box = glass ? glass->boundingBox() : layerGlass->boundingBox();
         if (box)
             expandedDamage.add(*box);
     }
@@ -67,6 +75,7 @@ void notifyError(std::string_view message) {
 static CRegion hookRenderPassRender(CRenderPass* self, const CRegion& damage) {
     if (g_state && g_pluginHandle && enabled()) {
         const float opacity = windowOpacity();
+        const float matchedLayerOpacity = layerOpacity();
         for (auto& elementData : self->m_passElements) {
             auto* surface = dynamic_cast<CSurfacePassElement*>(elementData->element.get());
             if (surface && surface->m_data.pWindow && !isExcludedWindow(surface->m_data.pWindow)) {
@@ -76,6 +85,13 @@ static CRegion hookRenderPassRender(CRenderPass* self, const CRegion& damage) {
 
                 if (opacity < 0.999F)
                     surface->m_data.alpha = std::min(surface->m_data.alpha, opacity);
+            }
+
+            if (shouldOverrideLayerSurface(surface)) {
+                surface->m_data.blur = false;
+
+                if (matchedLayerOpacity < 0.999F)
+                    surface->m_data.alpha = std::min(surface->m_data.alpha, matchedLayerOpacity);
             }
         }
     }
@@ -121,6 +137,27 @@ static void hookRendererRenderWindow(CHyprRenderer* self, PHLWINDOW window, PHLM
     g_originalRenderWindow(self, window, monitor, time, decorate, mode, ignorePosition, standalone);
 }
 
+static bool shouldInjectLayerGlass(PHLLS layer, PHLMONITOR monitor, bool popups, bool lockscreen) {
+    if (!g_state || !g_pluginHandle || !enabled() || !layer || !monitor || popups || lockscreen || !layer->visible() || layer->m_alpha->value() <= 0.001F ||
+        !isIncludedLayer(layer))
+        return false;
+
+    return !isFullscreenLayerOverlay(layer, monitor);
+}
+
+static void hookRendererRenderLayer(CHyprRenderer* self, PHLLS layer, PHLMONITOR monitor, const Time::steady_tp& time, bool popups, bool lockscreen) {
+    if (shouldInjectLayerGlass(layer, monitor, popups, lockscreen)) {
+        if (auto* state = layerStateFor(layer)) {
+            const auto surface = layer->wlSurface() ? layer->wlSurface()->resource() : nullptr;
+            const auto maskTexture = surface ? surface->m_current.texture : nullptr;
+            self->m_renderPass.add(
+                makeUnique<CLayerGlassPassElement>(CLayerGlassPassElement::SLayerGlassPassData{layer, state, maskTexture, layer->m_alpha->value()}));
+        }
+    }
+
+    g_originalRenderLayer(self, layer, monitor, time, popups, lockscreen);
+}
+
 static bool hookWindowOpaque(Desktop::View::CWindow* window) {
     if (g_state && g_pluginHandle && enabled() && windowOpacity() < 0.999F && !isExcludedWindow(window->m_self.lock()))
         return false;
@@ -141,8 +178,8 @@ static std::string_view trim(std::string_view value) {
     return value;
 }
 
-static bool classListContains(std::string_view list, std::string_view className) {
-    const std::string wanted = lower(std::string(className));
+static bool commaListContains(std::string_view list, std::string_view needle) {
+    const std::string wanted = lower(std::string(needle));
     std::string_view rest = list;
 
     while (!rest.empty()) {
@@ -164,7 +201,58 @@ static bool isExcludedWindow(PHLWINDOW window) {
         return true;
 
     const auto excludes = configString(CFG_EXCLUDE_CLASSES, DEFAULT_EXCLUDE_CLASSES);
-    return classListContains(excludes, window->m_class) || classListContains(excludes, window->m_initialClass);
+    return commaListContains(excludes, window->m_class) || commaListContains(excludes, window->m_initialClass);
+}
+
+static bool isIncludedLayer(PHLLS layer) {
+    if (!layer)
+        return false;
+
+    const auto namespaces = configString(CFG_LAYER_NAMESPACES, DEFAULT_LAYER_NAMESPACES);
+    return commaListContains(namespaces, layer->m_namespace);
+}
+
+static bool isFullscreenLayerOverlay(PHLLS layer, PHLMONITOR monitor) {
+    if (!layer || !monitor)
+        return false;
+
+    const auto box = layer->surfaceLogicalBox();
+    if (!box)
+        return false;
+
+    return box->width >= monitor->m_size.x * 0.90 && box->height >= monitor->m_size.y * 0.90;
+}
+
+static bool shouldOverrideLayerSurface(CSurfacePassElement* surface) {
+    if (!surface || !surface->m_data.pLS || surface->m_data.popup || !isIncludedLayer(surface->m_data.pLS))
+        return false;
+
+    auto monitor = surface->m_data.pMonitor.lock();
+    if (!monitor)
+        monitor = surface->m_data.pLS->m_monitor.lock();
+
+    return !isFullscreenLayerOverlay(surface->m_data.pLS, monitor);
+}
+
+static SLayerGlassState* layerStateFor(PHLLS layer) {
+    if (!g_state || !layer)
+        return nullptr;
+
+    std::erase_if(g_state->layerStates, [](const auto& state) { return !state || state->layer.expired(); });
+
+    const auto found = std::ranges::find_if(g_state->layerStates, [&](const auto& state) {
+        const auto locked = state->layer.lock();
+        return locked && locked == layer;
+    });
+
+    if (found != g_state->layerStates.end())
+        return found->get();
+
+    auto state = makeUnique<SLayerGlassState>();
+    state->layer = layer;
+    auto* raw = state.get();
+    g_state->layerStates.emplace_back(std::move(state));
+    return raw;
 }
 
 static CFunctionHook* installHook(const std::string& demangledNeedle, const std::string& methodName, void* hookFunction, void** originalOut) {
@@ -247,7 +335,10 @@ static void syncWindows() {
 static void addConfigValues() {
     HyprlandAPI::addConfigValue(g_pluginHandle, CFG_ENABLED, Hyprlang::INT{1});
     HyprlandAPI::addConfigValue(g_pluginHandle, CFG_EXCLUDE_CLASSES, Hyprlang::STRING{DEFAULT_EXCLUDE_CLASSES});
+    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_LAYER_NAMESPACES, Hyprlang::STRING{DEFAULT_LAYER_NAMESPACES});
     HyprlandAPI::addConfigValue(g_pluginHandle, CFG_WINDOW_OPACITY, Hyprlang::FLOAT{DEFAULT_WINDOW_OPACITY});
+    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_LAYER_OPACITY, Hyprlang::FLOAT{DEFAULT_LAYER_OPACITY});
+    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_LAYER_CORNER_RADIUS, Hyprlang::FLOAT{DEFAULT_LAYER_CORNER_RADIUS});
     HyprlandAPI::addConfigValue(g_pluginHandle, CFG_BLUR_STRENGTH, Hyprlang::FLOAT{DEFAULT_BLUR_STRENGTH});
     HyprlandAPI::addConfigValue(g_pluginHandle, CFG_BLUR_ITERATIONS, Hyprlang::INT{DEFAULT_BLUR_ITERATIONS});
     HyprlandAPI::addConfigValue(g_pluginHandle, CFG_REFRACTION_STRENGTH, Hyprlang::FLOAT{DEFAULT_REFRACTION_STRENGTH});
@@ -287,6 +378,8 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
         installHook("CRenderPass::render(", "render", reinterpret_cast<void*>(hookRenderPassRender), reinterpret_cast<void**>(&g_originalRenderPassRender));
     g_state->renderWindowHook = installHook("CHyprRenderer::renderWindow(", "renderWindow", reinterpret_cast<void*>(hookRendererRenderWindow),
                                             reinterpret_cast<void**>(&g_originalRenderWindow));
+    g_state->renderLayerHook = installHook("CHyprRenderer::renderLayer(", "renderLayer", reinterpret_cast<void*>(hookRendererRenderLayer),
+                                           reinterpret_cast<void**>(&g_originalRenderLayer));
     g_state->windowOpaqueHook =
         installHook("Desktop::View::CWindow::opaque(", "opaque", reinterpret_cast<void*>(hookWindowOpaque), reinterpret_cast<void**>(&g_originalWindowOpaque));
 
@@ -317,6 +410,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
     }
 
     g_pHyprRenderer->m_renderPass.removeAllOfType("CGlassPassElement");
+    g_pHyprRenderer->m_renderPass.removeAllOfType("CLayerGlassPassElement");
     g_state->shaderManager.destroy();
     g_state.reset();
     g_pluginHandle = nullptr;
