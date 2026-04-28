@@ -1,6 +1,6 @@
 # Hyprland Liquid Glass
 
-LiquidGlass is a Hyprland plugin that renders a per-window liquid glass material. It samples the framebuffer behind each window, applies a small Gaussian frost blur, then adds Hyprland-rounded body lensing, edge refraction, subtle color dispersion, adaptive tinting, grain, shadow, and specular highlights.
+LiquidGlass is a Hyprland plugin that renders a per-window liquid glass material. It samples the framebuffer behind each window, applies a small Gaussian frost blur, then adds Hyprland-rounded body lensing, edge refraction, visible color dispersion, adaptive tinting, grain, shadow, and specular highlights.
 
 The effect is rendered as a window decoration under normal client surfaces and as a render-pass element under selected layer-shell surfaces. The plugin also lowers managed window alpha slightly so normal opaque apps can show the material without requiring app-specific transparency.
 
@@ -59,7 +59,7 @@ plugin:liquidglass {
     blur_iterations = 2
 
     refraction_strength = 1.15
-    chromatic_aberration = 0.55
+    chromatic_aberration = 0.90
     lens_distortion = 1.15
 
     fresnel_strength = 0.46
@@ -111,7 +111,7 @@ Set the panel background alpha low enough for the compositor material to show th
 | `blur_strength` | `0.32` | Radius multiplier for the sampled background blur. |
 | `blur_iterations` | `2` | Number of horizontal/vertical blur passes. Higher values cost more GPU time. |
 | `refraction_strength` | `1.15` | Edge refraction amount. |
-| `chromatic_aberration` | `0.55` | Color channel separation near refractive edges. |
+| `chromatic_aberration` | `0.90` | Color channel separation near refractive edges. |
 | `lens_distortion` | `1.15` | Center lens distortion amount. |
 | `fresnel_strength` | `0.46` | Edge glow strength. |
 | `specular_strength` | `0.38` | Diagonal highlight strength. |

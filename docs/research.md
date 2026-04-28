@@ -10,7 +10,7 @@
 - Layer-shell clients such as Quickshell do not have window decorations, so matched namespaces use a separate pass injected before `CHyprRenderer::renderLayer` draws the layer surface.
 - Fullscreen layer-shell overlays are excluded from that pass. Quickshell launchers commonly use a transparent fullscreen layer with an inner visible panel; drawing a fullscreen glass pass there makes empty regions flash. Those overlays should rely on Hyprland's layer blur plus translucent QML panel colors.
 - The shader now applies Hyprland-rounded SDF body lensing inside the existing window decoration pass. This keeps the stable compositor path while making the interior of the glass bend the sampled framebuffer, closer to Apple's lensing description and the shuding displacement-map reference.
-- The current material favors a Regular-style desktop treatment: adaptive tint, local dimming/boost, visible shoulder refraction, and restrained chromatic split. Apple's guidance explicitly warns against using clear glass without extra separation, so the default avoids a fully transparent, high-rainbow look.
+- The current material favors a Regular-style desktop treatment: adaptive tint, local dimming/boost, visible shoulder refraction, and moderate chromatic split. Apple's guidance explicitly warns against using clear glass without extra separation, so the default avoids a fully transparent, high-rainbow look.
 - Layer support is namespace-gated by default to avoid applying glass to wallpapers, lock surfaces, and unrelated panels.
 
 Sources:
