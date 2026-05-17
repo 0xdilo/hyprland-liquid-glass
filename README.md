@@ -1,6 +1,6 @@
 # Hyprland Liquid Glass
 
-LiquidGlass is a Hyprland plugin that renders a per-window liquid glass material. It samples the framebuffer behind each window, applies a small Gaussian frost blur, then adds Hyprland-rounded body lensing, edge refraction, visible color dispersion, adaptive tinting, grain, shadow, and specular highlights.
+LiquidGlass is a Hyprland plugin that renders a per-window liquid glass material. It samples the framebuffer behind each window, applies a small blur, then uses a ShojiWM-style rounded SDF shader with edge-focused radial distortion, visible color dispersion, and a simple multiplicative tint.
 
 The effect is rendered as a window decoration under normal client surfaces and as a render-pass element under selected layer-shell surfaces. The plugin also lowers managed window alpha slightly so normal opaque apps can show the material without requiring app-specific transparency.
 
@@ -80,6 +80,8 @@ plugin:liquidglass {
 
 For a stronger, more visible setup, use the checked-in [evident preset](presets/evident.conf). It keeps the stable compositor path and makes the material easier to see with thicker refractive edges, stronger lensing, brighter specular highlights, and slightly more managed-window transparency.
 
+The default values are calibrated to ShojiWM's liquid glass shader: `blur_strength = 0.32` maps to roughly a radius-2 blur, `edge_thickness = 0.040` maps to a distortion depth near `0.2`, `refraction_strength` and `lens_distortion` combine to a distortion strength near `0.15`, `chromatic_aberration = 0.90` maps to about a 3 px color-channel split, and `brightness = 0.88` maps to ShojiWM's `glass_tint = 0.9`.
+
 ## Layer Shell Surfaces
 
 Layer-shell clients such as Quickshell bars, launchers, notifications, and panels are not normal windows, so LiquidGlass renders them through a separate layer pass. Only namespaces listed in `layer_namespaces` receive the material. The default is `quickshell`.
@@ -107,22 +109,22 @@ Set the panel background alpha low enough for the compositor material to show th
 | `window_opacity` | `0.90` | Alpha applied to managed window surfaces so the glass backing can show through. Set to `1.0` to avoid forcing opacity. |
 | `layer_opacity` | `1.0` | Alpha applied to matched layer-shell surfaces. Lower this only if a layer is fully opaque and you want the backing material to show through. |
 | `layer_corner_radius` | `12` | Corner radius used for matched layer-shell glass rectangles, in layout pixels. |
-| `glass_opacity` | `0.78` | Strength of the rendered glass backing. |
-| `blur_strength` | `0.32` | Radius multiplier for the sampled background blur. |
+| `glass_opacity` | `0.78` | Strength of the rendered glass backing. This value is calibrated as the Shoji-style full-strength pass. |
+| `blur_strength` | `0.32` | Radius multiplier for the sampled background blur. The default maps to roughly radius 2. |
 | `blur_iterations` | `2` | Number of horizontal/vertical blur passes. Higher values cost more GPU time. |
-| `refraction_strength` | `1.15` | Edge refraction amount. |
-| `chromatic_aberration` | `0.90` | Color channel separation near refractive edges. |
-| `lens_distortion` | `1.15` | Center lens distortion amount. |
-| `fresnel_strength` | `0.46` | Edge glow strength. |
-| `specular_strength` | `0.38` | Diagonal highlight strength. |
-| `edge_thickness` | `0.040` | Width of the refractive edge band relative to the window size. |
+| `refraction_strength` | `1.15` | Multiplier for Shoji-style edge distortion. |
+| `chromatic_aberration` | `0.90` | Multiplier for the Shoji-style 3 px color-channel split. |
+| `lens_distortion` | `1.15` | Multiplier for Shoji-style radial edge lensing. |
+| `fresnel_strength` | `0.46` | Compatibility option kept for older configs; the Shoji-style shader does not add a separate rim glow. |
+| `specular_strength` | `0.38` | Compatibility option kept for older configs; the Shoji-style shader does not add a separate specular highlight. |
+| `edge_thickness` | `0.040` | Distortion falloff multiplier. The default maps to ShojiWM's `distortion_depth = 0.2`. |
 | `tint_color` | `0xb8d8ff00` | Glass tint as `RRGGBBAA`. Alpha `00` disables tint. |
-| `brightness` | `0.88` | Brightness applied to sampled glass. |
-| `contrast` | `1.16` | Contrast applied to sampled glass. |
-| `saturation` | `1.14` | Saturation applied to sampled glass. |
-| `vibrancy` | `0.32` | Extra saturation for already colorful sampled content. |
-| `adaptive_dim` | `0.32` | Dims bright sampled content to keep text readable. |
-| `adaptive_boost` | `0.10` | Brightens dark sampled content. |
+| `brightness` | `0.88` | Multiplicative glass tint. The default maps to ShojiWM's `glass_tint = 0.9`. |
+| `contrast` | `1.16` | Compatibility option kept for older configs; the Shoji-style shader keeps contrast unchanged. |
+| `saturation` | `1.14` | Compatibility option kept for older configs; the Shoji-style shader keeps saturation unchanged. |
+| `vibrancy` | `0.32` | Compatibility option kept for older configs; the Shoji-style shader does not add extra vibrancy. |
+| `adaptive_dim` | `0.32` | Compatibility option kept for older configs; the Shoji-style shader does not add adaptive dimming. |
+| `adaptive_boost` | `0.10` | Compatibility option kept for older configs; the Shoji-style shader does not add adaptive boosting. |
 
 ## Performance Notes
 

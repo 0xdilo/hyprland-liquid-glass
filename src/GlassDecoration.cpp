@@ -12,6 +12,8 @@
 #include "Globals.hpp"
 #include "WindowGeometry.hpp"
 
+using namespace Render::GL;
+
 CGlassDecoration::CGlassDecoration(PHLWINDOW window) : IHyprWindowDecoration(window), m_window(window) {}
 
 SDecorationPositioningInfo CGlassDecoration::getPositioningInfo() {
@@ -68,7 +70,7 @@ void CGlassDecoration::renderPass(PHLMONITOR monitor, float alpha) {
         return;
 
     const auto window = m_window.lock();
-    if (!window || !monitor || !g_pHyprOpenGL->m_renderData.currentFB)
+    if (!window || !monitor || !g_pHyprRenderer->m_renderData.currentFB)
         return;
 
     auto box = LiquidGlass::WindowGeometry::computeWindowBox(window, monitor);
@@ -77,29 +79,34 @@ void CGlassDecoration::renderPass(PHLMONITOR monitor, float alpha) {
 
     CBox windowBox = *box;
     CBox transformedBox = windowBox;
-    const auto transform = Math::wlTransformToHyprutils(Math::invertTransform(g_pHyprOpenGL->m_renderData.pMonitor->m_transform));
-    transformedBox.transform(transform, g_pHyprOpenGL->m_renderData.pMonitor->m_transformedSize.x, g_pHyprOpenGL->m_renderData.pMonitor->m_transformedSize.y);
+    const auto transform = Math::wlTransformToHyprutils(Math::invertTransform(monitor->m_transform));
+    transformedBox.transform(transform, monitor->m_transformedSize.x, monitor->m_transformedSize.y);
     if (transformedBox.width <= 1.0 || transformedBox.height <= 1.0)
         return;
 
     const auto blurStrength = std::clamp(LiquidGlass::configFloat(LiquidGlass::CFG_BLUR_STRENGTH, LiquidGlass::DEFAULT_BLUR_STRENGTH), 0.0F, 4.0F);
     const int downscale = blurStrength >= LiquidGlass::GlassRenderer::BLUR_DOWNSCALE_THRESHOLD ? LiquidGlass::GlassRenderer::BLUR_DOWNSCALE_MAX : 1;
 
-    auto* source = g_pHyprOpenGL->m_renderData.currentFB;
-    LiquidGlass::GlassRenderer::sampleBackground(m_sampleFramebuffer, *source, transformedBox, m_samplePaddingRatio, downscale);
+    auto source = g_pHyprRenderer->m_renderData.currentFB;
+    if (!LiquidGlass::GlassRenderer::sampleBackground(m_sampleFramebuffer, source, transformedBox, m_samplePaddingRatio, downscale))
+        return;
+    auto* sourceGL = GLFB(source);
+    if (!sourceGL)
+        return;
 
-    const float blurRadius = blurStrength * 12.0F / static_cast<float>(downscale);
-    const int blurIterations = std::clamp(static_cast<int>(LiquidGlass::configInt(LiquidGlass::CFG_BLUR_ITERATIONS, LiquidGlass::DEFAULT_BLUR_ITERATIONS)), 1, 5);
-    const int viewportWidth = static_cast<int>(g_pHyprOpenGL->m_renderData.pMonitor->m_transformedSize.x);
-    const int viewportHeight = static_cast<int>(g_pHyprOpenGL->m_renderData.pMonitor->m_transformedSize.y);
-    LiquidGlass::GlassRenderer::blurBackground(m_sampleFramebuffer, blurRadius, blurIterations, source->getFBID(), viewportWidth, viewportHeight);
+    const float blurRadius = blurStrength * LiquidGlass::GlassRenderer::BLUR_RADIUS_SCALE / static_cast<float>(downscale);
+    const int blurIterations =
+        std::clamp(static_cast<int>(LiquidGlass::configInt(LiquidGlass::CFG_BLUR_ITERATIONS, LiquidGlass::DEFAULT_BLUR_ITERATIONS)), 1, 5);
+    const int viewportWidth = static_cast<int>(monitor->m_transformedSize.x);
+    const int viewportHeight = static_cast<int>(monitor->m_transformedSize.y);
+    LiquidGlass::GlassRenderer::blurBackground(m_sampleFramebuffer, blurRadius, blurIterations, sourceGL->getFBID(), viewportWidth, viewportHeight);
 
     const float monitorScale = monitor->m_scale;
     const float cornerRadius = window->rounding() * monitorScale;
     const float roundingPower = window->roundingPower();
 
-    LiquidGlass::GlassRenderer::applyGlassEffect(m_sampleFramebuffer, *source, windowBox, transformedBox, alpha, cornerRadius, roundingPower,
-                                                m_samplePaddingRatio);
+    LiquidGlass::GlassRenderer::applyGlassEffect(m_sampleFramebuffer, source, windowBox, transformedBox, alpha, cornerRadius, roundingPower,
+                                                 m_samplePaddingRatio);
 }
 
 eDecorationType CGlassDecoration::getDecorationType() {

@@ -13,12 +13,13 @@ class CGlassPassElement : public IPassElement {
 
     explicit CGlassPassElement(const SGlassPassData& data);
 
-    void draw(const CRegion& damage) override;
+    std::vector<UP<IPassElement>> draw() override;
     bool needsLiveBlur() override;
     bool needsPrecomputeBlur() override;
     std::optional<CBox> boundingBox() override;
     bool disableSimplification() override;
     bool undiscardable() override;
+    ePassElementType type() override;
 
     const char* passName() override {
         return "CGlassPassElement";

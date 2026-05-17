@@ -7,6 +7,8 @@
 #include "Globals.hpp"
 #include "Shaders.hpp"
 
+using namespace Render::GL;
+
 namespace LiquidGlass {
 
 bool CShaderManager::compileGlassShader() {

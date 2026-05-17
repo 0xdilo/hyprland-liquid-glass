@@ -26,7 +26,7 @@ class CGlassDecoration : public IHyprWindowDecoration {
 
   private:
     PHLWINDOWREF m_window;
-    CFramebuffer m_sampleFramebuffer;
+    SP<Render::IFramebuffer> m_sampleFramebuffer;
     Vector2D m_samplePaddingRatio;
     Vector2D m_lastPosition;
     Vector2D m_lastSize;

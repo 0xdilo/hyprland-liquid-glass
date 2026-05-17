@@ -17,13 +17,13 @@ namespace LiquidGlass {
 
 struct SLayerGlassState {
     PHLLSREF layer;
-    CFramebuffer sampleFramebuffer;
+    SP<Render::IFramebuffer> sampleFramebuffer;
     Vector2D samplePaddingRatio;
 };
 
 struct SGlobalState {
     CShaderManager shaderManager;
-    CFramebuffer blurTempFramebuffer;
+    SP<Render::IFramebuffer> blurTempFramebuffer;
     std::vector<WP<CGlassDecoration>> decorations;
     std::vector<UP<SLayerGlassState>> layerStates;
     std::vector<CHyprSignalListener> listeners;

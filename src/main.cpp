@@ -29,9 +29,9 @@
 
 namespace LiquidGlass {
 
-using RenderPassRenderFn = CRegion (*)(CRenderPass*, const CRegion&);
-using RenderWindowFn = void (*)(CHyprRenderer*, PHLWINDOW, PHLMONITOR, const Time::steady_tp&, bool, eRenderPassMode, bool, bool);
-using RenderLayerFn = void (*)(CHyprRenderer*, PHLLS, PHLMONITOR, const Time::steady_tp&, bool, bool);
+using RenderPassRenderFn = CRegion (*)(Render::CRenderPass*, const CRegion&);
+using RenderWindowFn = void (*)(Render::IHyprRenderer*, PHLWINDOW, PHLMONITOR, const Time::steady_tp&, bool, Render::eRenderPassMode, bool, bool);
+using RenderLayerFn = void (*)(Render::IHyprRenderer*, PHLLS, PHLMONITOR, const Time::steady_tp&, bool, bool);
 using WindowOpaqueFn = bool (*)(Desktop::View::CWindow*);
 
 static RenderPassRenderFn g_originalRenderPassRender = nullptr;
@@ -47,7 +47,7 @@ static SLayerGlassState* layerStateFor(PHLLS layer);
 static void closeWindow(PHLWINDOW window);
 static CGlassDecoration* glassDecorationFor(PHLWINDOW window);
 
-static CRegion damageWithGlassBoxes(CRenderPass* self, const CRegion& damage, bool& hasGlass) {
+static CRegion damageWithGlassBoxes(Render::CRenderPass* self, const CRegion& damage, bool& hasGlass) {
     auto expandedDamage = damage.copy();
 
     for (const auto& elementData : self->m_passElements) {
@@ -72,7 +72,7 @@ void notifyError(std::string_view message) {
         HyprlandAPI::addNotification(g_pluginHandle, fullMessage, CHyprColor(0xFFFF3355), 8000);
 }
 
-static CRegion hookRenderPassRender(CRenderPass* self, const CRegion& damage) {
+static CRegion hookRenderPassRender(Render::CRenderPass* self, const CRegion& damage) {
     if (g_state && g_pluginHandle && enabled()) {
         const float opacity = windowOpacity();
         const float matchedLayerOpacity = layerOpacity();
@@ -106,26 +106,21 @@ static CRegion hookRenderPassRender(CRenderPass* self, const CRegion& damage) {
     return g_originalRenderPassRender(self, damage);
 }
 
-static bool rendersMainPass(eRenderPassMode mode) {
-    return mode == RENDER_PASS_ALL || mode == RENDER_PASS_MAIN;
+static bool rendersMainPass(Render::eRenderPassMode mode) {
+    return mode == Render::RENDER_PASS_ALL || mode == Render::RENDER_PASS_MAIN;
 }
 
 static float effectiveWindowAlpha(PHLWINDOW window) {
-    const auto workspace = window->m_workspace;
-    const bool useWorkspaceFade = window->m_monitorMovedFrom != -1 && (!workspace || !workspace->isVisible());
-    const float workspaceAlpha = window->m_pinned || useWorkspaceFade || !workspace ? 1.0F : workspace->m_alpha->value();
-    const float movingToAlpha = useWorkspaceFade ? window->m_movingToWorkspaceAlpha->value() : 1.0F;
-
-    return window->m_alpha->value() * workspaceAlpha * movingToAlpha * window->m_movingFromWorkspaceAlpha->value() * window->m_activeInactiveAlpha->value();
+    return window->effectiveAlpha();
 }
 
-static bool shouldInjectFullscreenGlass(PHLWINDOW window, PHLMONITOR monitor, eRenderPassMode mode, bool standalone) {
+static bool shouldInjectFullscreenGlass(PHLWINDOW window, PHLMONITOR monitor, Render::eRenderPassMode mode, bool standalone) {
     return g_state && g_pluginHandle && enabled() && window && monitor && !standalone && rendersMainPass(mode) && window->m_isMapped && !window->m_fadingOut &&
            !window->isHidden() && window->isEffectiveInternalFSMode(FSMODE_FULLSCREEN) && !isExcludedWindow(window);
 }
 
-static void hookRendererRenderWindow(CHyprRenderer* self, PHLWINDOW window, PHLMONITOR monitor, const Time::steady_tp& time, bool decorate,
-                                     eRenderPassMode mode, bool ignorePosition, bool standalone) {
+static void hookRendererRenderWindow(Render::IHyprRenderer* self, PHLWINDOW window, PHLMONITOR monitor, const Time::steady_tp& time, bool decorate,
+                                     Render::eRenderPassMode mode, bool ignorePosition, bool standalone) {
     if (shouldInjectFullscreenGlass(window, monitor, mode, standalone)) {
         const float alpha = effectiveWindowAlpha(window);
         if (alpha > 0.001F) {
@@ -145,7 +140,7 @@ static bool shouldInjectLayerGlass(PHLLS layer, PHLMONITOR monitor, bool popups,
     return !isFullscreenLayerOverlay(layer, monitor);
 }
 
-static void hookRendererRenderLayer(CHyprRenderer* self, PHLLS layer, PHLMONITOR monitor, const Time::steady_tp& time, bool popups, bool lockscreen) {
+static void hookRendererRenderLayer(Render::IHyprRenderer* self, PHLLS layer, PHLMONITOR monitor, const Time::steady_tp& time, bool popups, bool lockscreen) {
     if (shouldInjectLayerGlass(layer, monitor, popups, lockscreen)) {
         if (auto* state = layerStateFor(layer)) {
             const auto surface = layer->wlSurface() ? layer->wlSurface()->resource() : nullptr;
@@ -333,28 +328,23 @@ static void syncWindows() {
 }
 
 static void addConfigValues() {
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_ENABLED, Hyprlang::INT{1});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_EXCLUDE_CLASSES, Hyprlang::STRING{DEFAULT_EXCLUDE_CLASSES});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_LAYER_NAMESPACES, Hyprlang::STRING{DEFAULT_LAYER_NAMESPACES});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_WINDOW_OPACITY, Hyprlang::FLOAT{DEFAULT_WINDOW_OPACITY});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_LAYER_OPACITY, Hyprlang::FLOAT{DEFAULT_LAYER_OPACITY});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_LAYER_CORNER_RADIUS, Hyprlang::FLOAT{DEFAULT_LAYER_CORNER_RADIUS});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_BLUR_STRENGTH, Hyprlang::FLOAT{DEFAULT_BLUR_STRENGTH});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_BLUR_ITERATIONS, Hyprlang::INT{DEFAULT_BLUR_ITERATIONS});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_REFRACTION_STRENGTH, Hyprlang::FLOAT{DEFAULT_REFRACTION_STRENGTH});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_CHROMATIC_ABERRATION, Hyprlang::FLOAT{DEFAULT_CHROMATIC_ABERRATION});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_FRESNEL_STRENGTH, Hyprlang::FLOAT{DEFAULT_FRESNEL_STRENGTH});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_SPECULAR_STRENGTH, Hyprlang::FLOAT{DEFAULT_SPECULAR_STRENGTH});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_GLASS_OPACITY, Hyprlang::FLOAT{DEFAULT_GLASS_OPACITY});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_EDGE_THICKNESS, Hyprlang::FLOAT{DEFAULT_EDGE_THICKNESS});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_TINT_COLOR, Hyprlang::INT{DEFAULT_TINT_COLOR});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_LENS_DISTORTION, Hyprlang::FLOAT{DEFAULT_LENS_DISTORTION});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_BRIGHTNESS, Hyprlang::FLOAT{DEFAULT_BRIGHTNESS});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_CONTRAST, Hyprlang::FLOAT{DEFAULT_CONTRAST});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_SATURATION, Hyprlang::FLOAT{DEFAULT_SATURATION});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_VIBRANCY, Hyprlang::FLOAT{DEFAULT_VIBRANCY});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_ADAPTIVE_DIM, Hyprlang::FLOAT{DEFAULT_ADAPTIVE_DIM});
-    HyprlandAPI::addConfigValue(g_pluginHandle, CFG_ADAPTIVE_BOOST, Hyprlang::FLOAT{DEFAULT_ADAPTIVE_BOOST});
+    clearConfigValues();
+
+    const bool ok = addIntConfig(CFG_ENABLED, 1) && addStringConfig(CFG_EXCLUDE_CLASSES, DEFAULT_EXCLUDE_CLASSES) &&
+                    addStringConfig(CFG_LAYER_NAMESPACES, DEFAULT_LAYER_NAMESPACES) && addFloatConfig(CFG_WINDOW_OPACITY, DEFAULT_WINDOW_OPACITY) &&
+                    addFloatConfig(CFG_LAYER_OPACITY, DEFAULT_LAYER_OPACITY) && addFloatConfig(CFG_LAYER_CORNER_RADIUS, DEFAULT_LAYER_CORNER_RADIUS) &&
+                    addFloatConfig(CFG_BLUR_STRENGTH, DEFAULT_BLUR_STRENGTH) && addIntConfig(CFG_BLUR_ITERATIONS, DEFAULT_BLUR_ITERATIONS) &&
+                    addFloatConfig(CFG_REFRACTION_STRENGTH, DEFAULT_REFRACTION_STRENGTH) &&
+                    addFloatConfig(CFG_CHROMATIC_ABERRATION, DEFAULT_CHROMATIC_ABERRATION) && addFloatConfig(CFG_FRESNEL_STRENGTH, DEFAULT_FRESNEL_STRENGTH) &&
+                    addFloatConfig(CFG_SPECULAR_STRENGTH, DEFAULT_SPECULAR_STRENGTH) && addFloatConfig(CFG_GLASS_OPACITY, DEFAULT_GLASS_OPACITY) &&
+                    addFloatConfig(CFG_EDGE_THICKNESS, DEFAULT_EDGE_THICKNESS) && addIntConfig(CFG_TINT_COLOR, DEFAULT_TINT_COLOR) &&
+                    addFloatConfig(CFG_LENS_DISTORTION, DEFAULT_LENS_DISTORTION) && addFloatConfig(CFG_BRIGHTNESS, DEFAULT_BRIGHTNESS) &&
+                    addFloatConfig(CFG_CONTRAST, DEFAULT_CONTRAST) && addFloatConfig(CFG_SATURATION, DEFAULT_SATURATION) &&
+                    addFloatConfig(CFG_VIBRANCY, DEFAULT_VIBRANCY) && addFloatConfig(CFG_ADAPTIVE_DIM, DEFAULT_ADAPTIVE_DIM) &&
+                    addFloatConfig(CFG_ADAPTIVE_BOOST, DEFAULT_ADAPTIVE_BOOST);
+
+    if (!ok)
+        throw std::runtime_error("failed to register liquidglass config values");
 }
 
 } // namespace LiquidGlass
@@ -374,11 +364,11 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
     g_state = makeUnique<SGlobalState>();
     addConfigValues();
 
-    g_state->renderPassHook =
-        installHook("CRenderPass::render(", "render", reinterpret_cast<void*>(hookRenderPassRender), reinterpret_cast<void**>(&g_originalRenderPassRender));
-    g_state->renderWindowHook = installHook("CHyprRenderer::renderWindow(", "renderWindow", reinterpret_cast<void*>(hookRendererRenderWindow),
+    g_state->renderPassHook = installHook("Render::CRenderPass::render(", "render", reinterpret_cast<void*>(hookRenderPassRender),
+                                          reinterpret_cast<void**>(&g_originalRenderPassRender));
+    g_state->renderWindowHook = installHook("Render::IHyprRenderer::renderWindow(", "renderWindow", reinterpret_cast<void*>(hookRendererRenderWindow),
                                             reinterpret_cast<void**>(&g_originalRenderWindow));
-    g_state->renderLayerHook = installHook("CHyprRenderer::renderLayer(", "renderLayer", reinterpret_cast<void*>(hookRendererRenderLayer),
+    g_state->renderLayerHook = installHook("Render::IHyprRenderer::renderLayer(", "renderLayer", reinterpret_cast<void*>(hookRendererRenderLayer),
                                            reinterpret_cast<void**>(&g_originalRenderLayer));
     g_state->windowOpaqueHook =
         installHook("Desktop::View::CWindow::opaque(", "opaque", reinterpret_cast<void*>(hookWindowOpaque), reinterpret_cast<void**>(&g_originalWindowOpaque));
@@ -413,6 +403,7 @@ APICALL EXPORT void PLUGIN_EXIT() {
     g_pHyprRenderer->m_renderPass.removeAllOfType("CLayerGlassPassElement");
     g_state->shaderManager.destroy();
     g_state.reset();
+    clearConfigValues();
     g_pluginHandle = nullptr;
 }
 

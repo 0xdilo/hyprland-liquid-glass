@@ -11,18 +11,19 @@ class CLayerGlassPassElement : public IPassElement {
     struct SLayerGlassPassData {
         PHLLS layer;
         LiquidGlass::SLayerGlassState* state = nullptr;
-        SP<CTexture> maskTexture;
+        SP<Render::ITexture> maskTexture;
         float alpha = 1.0F;
     };
 
     explicit CLayerGlassPassElement(const SLayerGlassPassData& data);
 
-    void draw(const CRegion& damage) override;
+    std::vector<UP<IPassElement>> draw() override;
     bool needsLiveBlur() override;
     bool needsPrecomputeBlur() override;
     bool disableSimplification() override;
     bool undiscardable() override;
     std::optional<CBox> boundingBox() override;
+    ePassElementType type() override;
 
     const char* passName() override {
         return "CLayerGlassPassElement";

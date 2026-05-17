@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <string>
 
 #include <GLES3/gl32.h>
 #include <hyprland/src/render/OpenGL.hpp>
@@ -12,7 +13,25 @@
 #include "Config.hpp"
 #include "Globals.hpp"
 
+using namespace Render::GL;
+
 namespace LiquidGlass::GlassRenderer {
+
+static bool ensureFramebuffer(SP<Render::IFramebuffer>& framebuffer, int width, int height, DRMFormat format, const std::string& name) {
+    if (!g_pHyprRenderer)
+        return false;
+
+    if (!framebuffer)
+        framebuffer = g_pHyprRenderer->createFB(name);
+
+    if (!framebuffer)
+        return false;
+
+    if (framebuffer->m_size.x != width || framebuffer->m_size.y != height || framebuffer->m_drmFormat != format)
+        return framebuffer->alloc(width, height, format);
+
+    return framebuffer->isAllocated();
+}
 
 static void uploadToneUniforms() {
     const auto& uniforms = g_state->shaderManager.glassUniforms;
@@ -26,23 +45,32 @@ static void uploadToneUniforms() {
     glUniform1f(uniforms.adaptiveBoost, std::clamp(configFloat(CFG_ADAPTIVE_BOOST, DEFAULT_ADAPTIVE_BOOST), 0.0F, 1.0F));
 }
 
-void sampleBackground(CFramebuffer& sampleFramebuffer, CFramebuffer& sourceFramebuffer, CBox box, Vector2D& outPaddingRatio, int downscale) {
+bool sampleBackground(SP<Render::IFramebuffer>& sampleFramebuffer, SP<Render::IFramebuffer> sourceFramebuffer, CBox box, Vector2D& outPaddingRatio,
+                      int downscale) {
+    if (!sourceFramebuffer)
+        return false;
+
     const int pad = SAMPLE_PADDING_PX;
     const int fullWidth = static_cast<int>(box.width) + 2 * pad;
     const int fullHeight = static_cast<int>(box.height) + 2 * pad;
     const int sampleWidth = std::max(1, fullWidth / downscale);
     const int sampleHeight = std::max(1, fullHeight / downscale);
 
-    if (sampleFramebuffer.m_size.x != sampleWidth || sampleFramebuffer.m_size.y != sampleHeight)
-        sampleFramebuffer.alloc(sampleWidth, sampleHeight, sourceFramebuffer.m_drmFormat);
+    if (!ensureFramebuffer(sampleFramebuffer, sampleWidth, sampleHeight, sourceFramebuffer->m_drmFormat, "liquidglass-sample"))
+        return false;
+
+    auto* sampleGL = GLFB(sampleFramebuffer);
+    auto* sourceGL = GLFB(sourceFramebuffer);
+    if (!sampleGL || !sourceGL)
+        return false;
 
     int srcX0 = static_cast<int>(box.x) - pad;
     int srcX1 = static_cast<int>(box.x + box.width) + pad;
     int srcY0 = static_cast<int>(box.y) - pad;
     int srcY1 = static_cast<int>(box.y + box.height) + pad;
 
-    const int framebufferWidth = static_cast<int>(sourceFramebuffer.m_size.x);
-    const int framebufferHeight = static_cast<int>(sourceFramebuffer.m_size.y);
+    const int framebufferWidth = static_cast<int>(sourceFramebuffer->m_size.x);
+    const int framebufferHeight = static_cast<int>(sourceFramebuffer->m_size.y);
 
     int dstX0 = 0;
     int dstY0 = 0;
@@ -73,28 +101,36 @@ void sampleBackground(CFramebuffer& sampleFramebuffer, CFramebuffer& sourceFrame
 
     g_pHyprOpenGL->setCapStatus(GL_SCISSOR_TEST, false);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, sampleFramebuffer.getFBID());
+    glBindFramebuffer(GL_FRAMEBUFFER, sampleGL->getFBID());
     glClearColor(0.0F, 0.0F, 0.0F, 0.0F);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, sourceFramebuffer.getFBID());
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sampleFramebuffer.getFBID());
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, sourceGL->getFBID());
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sampleGL->getFBID());
     glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+    return true;
 }
 
-void blurBackground(CFramebuffer& sampleFramebuffer, float radius, int iterations, GLuint callerFramebufferID, int viewportWidth, int viewportHeight) {
+void blurBackground(SP<Render::IFramebuffer> sampleFramebuffer, float radius, int iterations, GLuint callerFramebufferID, int viewportWidth,
+                    int viewportHeight) {
     auto& shaderManager = g_state->shaderManager;
-    if (radius <= 0.0F || iterations <= 0 || !shaderManager.initialized())
+    if (!sampleFramebuffer || radius <= 0.0F || iterations <= 0 || !shaderManager.initialized())
         return;
 
-    const int width = static_cast<int>(sampleFramebuffer.m_size.x);
-    const int height = static_cast<int>(sampleFramebuffer.m_size.y);
+    const int width = static_cast<int>(sampleFramebuffer->m_size.x);
+    const int height = static_cast<int>(sampleFramebuffer->m_size.y);
 
     auto& blurTempFramebuffer = g_state->blurTempFramebuffer;
-    if (blurTempFramebuffer.m_size.x != width || blurTempFramebuffer.m_size.y != height)
-        blurTempFramebuffer.alloc(width, height, sampleFramebuffer.m_drmFormat);
+    if (!ensureFramebuffer(blurTempFramebuffer, width, height, sampleFramebuffer->m_drmFormat, "liquidglass-blur-temp"))
+        return;
 
-    static constexpr std::array<float, 9> FULLSCREEN_PROJECTION = {
+    auto* sampleGL = GLFB(sampleFramebuffer);
+    auto* blurTempGL = GLFB(blurTempFramebuffer);
+    if (!sampleGL || !blurTempGL)
+        return;
+
+    static constexpr std::array<GLfloat, 9> FULLSCREEN_PROJECTION = {
         2.0F, 0.0F, 0.0F, 0.0F, 2.0F, 0.0F, -1.0F, -1.0F, 1.0F,
     };
 
@@ -108,13 +144,13 @@ void blurBackground(CFramebuffer& sampleFramebuffer, float radius, int iteration
     glActiveTexture(GL_TEXTURE0);
 
     for (int iteration = 0; iteration < iterations; ++iteration) {
-        glBindFramebuffer(GL_FRAMEBUFFER, blurTempFramebuffer.getFBID());
-        sampleFramebuffer.getTexture()->bind();
+        glBindFramebuffer(GL_FRAMEBUFFER, blurTempGL->getFBID());
+        sampleFramebuffer->getTexture()->bind();
         glUniform2f(uniforms.direction, 1.0F / static_cast<float>(width), 0.0F);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, sampleFramebuffer.getFBID());
-        blurTempFramebuffer.getTexture()->bind();
+        glBindFramebuffer(GL_FRAMEBUFFER, sampleGL->getFBID());
+        blurTempFramebuffer->getTexture()->bind();
         glUniform2f(uniforms.direction, 0.0F, 1.0F / static_cast<float>(height));
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
@@ -124,19 +160,29 @@ void blurBackground(CFramebuffer& sampleFramebuffer, float radius, int iteration
     g_pHyprOpenGL->setViewport(0, 0, viewportWidth, viewportHeight);
 }
 
-void applyGlassEffect(CFramebuffer& sampleFramebuffer, CFramebuffer& targetFramebuffer, CBox& rawBox, CBox& transformedBox, float alpha, float cornerRadius,
-                      float roundingPower, const Vector2D& paddingRatio, SP<CTexture> maskTexture) {
+void applyGlassEffect(SP<Render::IFramebuffer> sampleFramebuffer, SP<Render::IFramebuffer> targetFramebuffer, CBox& rawBox, CBox& transformedBox, float alpha,
+                      float cornerRadius, float roundingPower, const Vector2D& paddingRatio, SP<Render::ITexture> maskTexture) {
+    if (!sampleFramebuffer || !targetFramebuffer)
+        return;
+
+    auto* targetGL = GLFB(targetFramebuffer);
+    if (!targetGL)
+        return;
+
     auto& shaderManager = g_state->shaderManager;
     const auto& uniforms = shaderManager.glassUniforms;
 
-    const auto transform = Math::wlTransformToHyprutils(Math::invertTransform(g_pHyprOpenGL->m_renderData.pMonitor->m_transform));
-    Mat3x3 matrix = g_pHyprOpenGL->m_renderData.monitorProjection.projectBox(rawBox, transform, rawBox.rot);
-    Mat3x3 glMatrix = g_pHyprOpenGL->m_renderData.projection.copy().multiply(matrix);
+    const auto monitor = g_pHyprRenderer->m_renderData.pMonitor.lock();
+    if (!monitor)
+        return;
+
+    const auto transform = Math::wlTransformToHyprutils(Math::invertTransform(monitor->m_transform));
+    Mat3x3 glMatrix = g_pHyprRenderer->projectBoxToTarget(rawBox, transform);
     glMatrix.transpose();
 
-    glBindFramebuffer(GL_FRAMEBUFFER, targetFramebuffer.getFBID());
+    glBindFramebuffer(GL_FRAMEBUFFER, targetGL->getFBID());
     glActiveTexture(GL_TEXTURE0);
-    sampleFramebuffer.getTexture()->bind();
+    sampleFramebuffer->getTexture()->bind();
 
     auto shader = g_pHyprOpenGL->useShader(shaderManager.glassShader);
     shader->setUniformMatrix3fv(SHADER_PROJ, 1, GL_FALSE, glMatrix.getMatrix());

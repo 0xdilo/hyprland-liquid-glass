@@ -4,7 +4,11 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
+#include <hyprland/src/config/values/types/FloatValue.hpp>
+#include <hyprland/src/config/values/types/IntValue.hpp>
+#include <hyprland/src/config/values/types/StringValue.hpp>
 #include <hyprland/src/plugins/PluginAPI.hpp>
 
 namespace LiquidGlass {
@@ -61,29 +65,65 @@ inline constexpr float DEFAULT_VIBRANCY = 0.32f;
 inline constexpr float DEFAULT_ADAPTIVE_DIM = 0.32f;
 inline constexpr float DEFAULT_ADAPTIVE_BOOST = 0.10f;
 
+inline std::unordered_map<std::string, SP<Config::Values::CIntValue>> g_intConfigValues;
+inline std::unordered_map<std::string, SP<Config::Values::CFloatValue>> g_floatConfigValues;
+inline std::unordered_map<std::string, SP<Config::Values::CStringValue>> g_stringConfigValues;
+
+inline bool addIntConfig(const char* name, Hyprlang::INT fallback) {
+    auto value = makeShared<Config::Values::CIntValue>(name, name, static_cast<Config::INTEGER>(fallback));
+    if (!HyprlandAPI::addConfigValueV2(g_pluginHandle, value))
+        return false;
+
+    g_intConfigValues[name] = value;
+    return true;
+}
+
+inline bool addFloatConfig(const char* name, float fallback) {
+    auto value = makeShared<Config::Values::CFloatValue>(name, name, static_cast<Config::FLOAT>(fallback));
+    if (!HyprlandAPI::addConfigValueV2(g_pluginHandle, value))
+        return false;
+
+    g_floatConfigValues[name] = value;
+    return true;
+}
+
+inline bool addStringConfig(const char* name, std::string_view fallback) {
+    auto value = makeShared<Config::Values::CStringValue>(name, name, Config::STRING(fallback));
+    if (!HyprlandAPI::addConfigValueV2(g_pluginHandle, value))
+        return false;
+
+    g_stringConfigValues[name] = value;
+    return true;
+}
+
+inline void clearConfigValues() {
+    g_intConfigValues.clear();
+    g_floatConfigValues.clear();
+    g_stringConfigValues.clear();
+}
+
 inline Hyprlang::INT configInt(const char* name, Hyprlang::INT fallback) {
-    auto* value = HyprlandAPI::getConfigValue(g_pluginHandle, name);
-    if (!value)
+    const auto found = g_intConfigValues.find(name);
+    if (found == g_intConfigValues.end() || !found->second)
         return fallback;
 
-    return *static_cast<Hyprlang::INT*>(value->dataPtr());
+    return static_cast<Hyprlang::INT>(found->second->value());
 }
 
 inline float configFloat(const char* name, float fallback) {
-    auto* value = HyprlandAPI::getConfigValue(g_pluginHandle, name);
-    if (!value)
+    const auto found = g_floatConfigValues.find(name);
+    if (found == g_floatConfigValues.end() || !found->second)
         return fallback;
 
-    return static_cast<float>(*static_cast<Hyprlang::FLOAT*>(value->dataPtr()));
+    return static_cast<float>(found->second->value());
 }
 
 inline std::string configString(const char* name, std::string_view fallback) {
-    auto* value = HyprlandAPI::getConfigValue(g_pluginHandle, name);
-    if (!value)
+    const auto found = g_stringConfigValues.find(name);
+    if (found == g_stringConfigValues.end() || !found->second)
         return std::string(fallback);
 
-    const auto* raw = static_cast<Hyprlang::STRING>(value->dataPtr());
-    return raw ? std::string(raw) : std::string(fallback);
+    return found->second->value();
 }
 
 inline bool enabled() {
